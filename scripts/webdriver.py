@@ -26,30 +26,38 @@ class Dispatch(object):
         return getattr(self, name)
 
 
-def run_driver(driver, run_jobs):
+def run_driver(run_jobs):
     dispatch = Dispatch()
     while True:
-        for job in run_jobs:
-            driver.get(job["url"])
-            time.sleep(10)
-            html = driver.page_source
-            print("parsing {}...".format(job["name"]))
-            action = job["action"]
-            dispatch[action](html)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+
+        driver = webdriver.Chrome(chrome_options=chrome_options)
+        
+        try:
+            for job in run_jobs:
+                driver.get(job["url"])
+                time.sleep(10)
+                html = driver.page_source
+                print("parsing {}...".format(job["name"]))
+                action = job["action"]
+                dispatch[action](html)
+        except:
+            driver.close()
+            driver.quit()
+
+        driver.close()
+        driver.quit()
 
 
 if __name__ == "__main__":
     try:
         # Ensure timezone is consistent
         os.environ["TZ"] = "America/New_York"
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-
-        driver = webdriver.Chrome(chrome_options=chrome_options)
-
+        
         run_jobs = [
             {
-                "url": "https://www.espn.com/nba/scoreboard/_/date/20191115",
+                "url": "https://www.espn.com/nba/scoreboard",
                 "name": "NBA",
                 "action": "parse_nba",
             },
@@ -73,11 +81,10 @@ if __name__ == "__main__":
             }
         ]
 
-        run_driver(driver, job)
+        run_driver(run_jobs)
     except Exception:
         traceback.print_exc()
         print("exiting...")
-        driver.quit()
         try:
             sys.exit(0)
         except SystemExit:
